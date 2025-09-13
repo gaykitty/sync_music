@@ -30,6 +30,14 @@ import mutagen
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
+def get_tag(tags, *tag_names):
+    """Check if a file has on of the given tags"""
+    for tag_name in tag_names:
+        if tag_name in tags.keys():
+            return tags[tag_name]
+    raise KeyError
+
+
 class ReplayGain:
     """ReplayGain information"""
 
@@ -62,18 +70,30 @@ class ReplayGain:
         tag_type = "album" if album_gain else "track"
         try:
             if isinstance(in_file, mutagen.mp3.MP3):
-                gain = in_file.tags[f"TXXX:replaygain_{tag_type}_gain"].text[0]
-                peak = in_file.tags[f"TXXX:replaygain_{tag_type}_peak"].text[0]
+                gain = get_tag(
+                    in_file.tags,
+                    f"TXXX:replaygain_{tag_type}_gain",
+                    f"TXXX:REPLAYGAIN_{tag_type.upper()}_GAIN",
+                ).text[0]
+                peak = get_tag(
+                    in_file.tags,
+                    f"TXXX:replaygain_{tag_type}_peak",
+                    f"TXXX:REPLAYGAIN_{tag_type.upper()}_PEAK",
+                ).text[0]
             elif isinstance(in_file, (mutagen.flac.FLAC, mutagen.oggvorbis.OggVorbis)):
-                gain = in_file.tags[f"replaygain_{tag_type}_gain"][0]
-                peak = in_file.tags[f"replaygain_{tag_type}_peak"][0]
+                gain = get_tag(in_file.tags, f"replaygain_{tag_type}_gain")[0]
+                peak = get_tag(in_file.tags, f"replaygain_{tag_type}_peak")[0]
             elif isinstance(in_file, mutagen.mp4.MP4):
-                gain = in_file.tags[
-                    f"----:com.apple.iTunes:replaygain_{tag_type}_gain"
-                ][0].decode("utf-8", "ignore")
-                peak = in_file.tags[
-                    f"----:com.apple.iTunes:replaygain_{tag_type}_peak"
-                ][0].decode("utf-8", "ignore")
+                gain = get_tag(
+                    in_file.tags,
+                    f"----:com.apple.iTunes:replaygain_{tag_type}_gain",
+                    f"----:com.apple.iTunes:REPLAYGAIN_{tag_type.upper()}_GAIN",
+                )[0].decode("utf-8", "ignore")
+                peak = get_tag(
+                    in_file.tags,
+                    f"----:com.apple.iTunes:replaygain_{tag_type}_peak",
+                    f"----:com.apple.iTunes:REPLAYGAIN_{tag_type.upper()}_PEAK",
+                )[0].decode("utf-8", "ignore")
             else:
                 return None
             return cls(float(gain.replace("dB", "")), float(peak))
